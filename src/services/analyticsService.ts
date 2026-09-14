@@ -1,7 +1,8 @@
-import { fetchEmployeeDirectory } from './employeeService';
-import { fetchProjects } from './projectService';
+import { fetchEmployeeDirectory, getCachedEmployeeDirectory } from './employeeService';
+import { fetchProjects, getCachedProjects } from './projectService';
 import { fetchLeaves } from './leaveService';
-import { fetchDomains } from './departmentService';
+import { fetchDomains, getCachedDomains } from './departmentService';
+import { memoryCache, FIVE_MINUTES_MS } from './cacheUtils';
 
 export interface WorkforceAnalyticsData {
   totalEmployees: number;
@@ -39,12 +40,11 @@ export interface ProjectAnalyticsData {
   avgCompletionRate: number;
 }
 
-export const getWorkforceAnalytics = async (): Promise<WorkforceAnalyticsData> => {
-  const [employees, domains] = await Promise.all([
-    fetchEmployeeDirectory(),
-    fetchDomains(),
-  ]);
+const CACHE_KEY_WORKFORCE_ANALYTICS = 'workforce_analytics_cache';
+const CACHE_KEY_DOMAIN_ANALYTICS = 'domain_analytics_cache';
+const CACHE_KEY_PROJECT_ANALYTICS = 'project_analytics_cache';
 
+const computeWorkforceAnalytics = (employees: any[], domains: any[]): WorkforceAnalyticsData => {
   const totalEmployees = employees.length;
   const activeEmployees = employees.filter(e => e.status === 'ACTIVE').length;
   const onLeaveEmployees = employees.filter(e => e.status === 'ON_LEAVE').length;
@@ -117,13 +117,23 @@ export const getWorkforceAnalytics = async (): Promise<WorkforceAnalyticsData> =
   };
 };
 
-export const getDomainAnalytics = async (): Promise<DomainAnalyticsData> => {
-  const [employees, domains, projects] = await Promise.all([
-    fetchEmployeeDirectory(),
-    fetchDomains(),
-    fetchProjects(),
-  ]);
+export const getCachedWorkforceAnalytics = (): WorkforceAnalyticsData => {
+  const cached = memoryCache.peek<WorkforceAnalyticsData>(CACHE_KEY_WORKFORCE_ANALYTICS);
+  if (cached) return cached;
+  return computeWorkforceAnalytics(getCachedEmployeeDirectory(), getCachedDomains());
+};
 
+export const getWorkforceAnalytics = async (forceRefresh = false): Promise<WorkforceAnalyticsData> => {
+  return memoryCache.getOrFetch(CACHE_KEY_WORKFORCE_ANALYTICS, async () => {
+    const [employees, domains] = await Promise.all([
+      fetchEmployeeDirectory(undefined, forceRefresh),
+      fetchDomains(forceRefresh),
+    ]);
+    return computeWorkforceAnalytics(employees, domains);
+  }, FIVE_MINUTES_MS, forceRefresh);
+};
+
+const computeDomainAnalytics = (domains: any[], employees: any[], projects: any[]): DomainAnalyticsData => {
   const domainStats = domains.map(d => {
     const domainEmployees = employees.filter(e => e.domainId === d.id);
     const domainProjects = projects.filter(p => p.domainId === d.id);
@@ -145,12 +155,24 @@ export const getDomainAnalytics = async (): Promise<DomainAnalyticsData> => {
   };
 };
 
-export const getProjectAnalytics = async (): Promise<ProjectAnalyticsData> => {
-  const [projects, domains] = await Promise.all([
-    fetchProjects(),
-    fetchDomains(),
-  ]);
+export const getCachedDomainAnalytics = (): DomainAnalyticsData => {
+  const cached = memoryCache.peek<DomainAnalyticsData>(CACHE_KEY_DOMAIN_ANALYTICS);
+  if (cached) return cached;
+  return computeDomainAnalytics(getCachedDomains(), getCachedEmployeeDirectory(), getCachedProjects());
+};
 
+export const getDomainAnalytics = async (forceRefresh = false): Promise<DomainAnalyticsData> => {
+  return memoryCache.getOrFetch(CACHE_KEY_DOMAIN_ANALYTICS, async () => {
+    const [employees, domains, projects] = await Promise.all([
+      fetchEmployeeDirectory(undefined, forceRefresh),
+      fetchDomains(forceRefresh),
+      fetchProjects(forceRefresh),
+    ]);
+    return computeDomainAnalytics(domains, employees, projects);
+  }, FIVE_MINUTES_MS, forceRefresh);
+};
+
+const computeProjectAnalytics = (projects: any[]): ProjectAnalyticsData => {
   const totalProjects = projects.length;
   const activeProjects = projects.filter(p => p.status === 'ACTIVE').length;
   const completedProjects = projects.filter(p => p.status === 'COMPLETED').length;
@@ -158,10 +180,10 @@ export const getProjectAnalytics = async (): Promise<ProjectAnalyticsData> => {
   const onHoldProjects = projects.filter(p => p.status === 'ON_HOLD').length;
 
   const statusDistribution = [
-    { name: 'Active', value: activeProjects, color: '#174A4A' },
-    { name: 'Completed', value: completedProjects, color: '#4F8068' },
-    { name: 'Pending', value: pendingProjects, color: '#C5A45D' },
-    { name: 'On Hold', value: onHoldProjects, color: '#C97867' },
+    { name: 'Active', value: activeProjects, color: '#047857' },
+    { name: 'Completed', value: completedProjects, color: '#0B2E2E' },
+    { name: 'Pending', value: pendingProjects, color: '#D97706' },
+    { name: 'On Hold', value: onHoldProjects, color: '#EF4444' },
   ];
 
   const domainProjectMap = new Map<string, number>();
@@ -199,4 +221,17 @@ export const getProjectAnalytics = async (): Promise<ProjectAnalyticsData> => {
     priorityDistribution,
     avgCompletionRate,
   };
+};
+
+export const getCachedProjectAnalytics = (): ProjectAnalyticsData => {
+  const cached = memoryCache.peek<ProjectAnalyticsData>(CACHE_KEY_PROJECT_ANALYTICS);
+  if (cached) return cached;
+  return computeProjectAnalytics(getCachedProjects());
+};
+
+export const getProjectAnalytics = async (forceRefresh = false): Promise<ProjectAnalyticsData> => {
+  return memoryCache.getOrFetch(CACHE_KEY_PROJECT_ANALYTICS, async () => {
+    const projects = await fetchProjects(forceRefresh);
+    return computeProjectAnalytics(projects);
+  }, FIVE_MINUTES_MS, forceRefresh);
 };

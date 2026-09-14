@@ -13,6 +13,7 @@ interface CacheEntry<T> {
 
 class InMemoryCache {
   private store = new Map<string, CacheEntry<unknown>>();
+  private pending = new Map<string, Promise<any>>();
 
   get<T>(key: string): T | null {
     const entry = this.store.get(key) as CacheEntry<T> | undefined;
@@ -27,6 +28,14 @@ class InMemoryCache {
     return entry.data;
   }
 
+  peek<T>(key: string): T | null {
+    return this.get<T>(key);
+  }
+
+  has(key: string): boolean {
+    return this.get(key) !== null;
+  }
+
   set<T>(key: string, data: T, ttlMs: number = FIVE_MINUTES_MS): void {
     this.store.set(key, {
       data,
@@ -35,8 +44,41 @@ class InMemoryCache {
     });
   }
 
+  async getOrFetch<T>(
+    key: string,
+    fetcher: () => Promise<T>,
+    ttlMs: number = FIVE_MINUTES_MS,
+    forceRefresh = false
+  ): Promise<T> {
+    if (!forceRefresh) {
+      const cached = this.get<T>(key);
+      if (cached !== null) {
+        return cached;
+      }
+
+      const inFlight = this.pending.get(key) as Promise<T> | undefined;
+      if (inFlight) {
+        return inFlight;
+      }
+    }
+
+    const promise = (async () => {
+      try {
+        const result = await fetcher();
+        this.set(key, result, ttlMs);
+        return result;
+      } finally {
+        this.pending.delete(key);
+      }
+    })();
+
+    this.pending.set(key, promise);
+    return promise;
+  }
+
   invalidate(key: string): void {
     this.store.delete(key);
+    this.pending.delete(key);
   }
 
   invalidatePrefix(prefix: string): void {
@@ -45,10 +87,16 @@ class InMemoryCache {
         this.store.delete(key);
       }
     }
+    for (const key of this.pending.keys()) {
+      if (key.startsWith(prefix)) {
+        this.pending.delete(key);
+      }
+    }
   }
 
   clear(): void {
     this.store.clear();
+    this.pending.clear();
   }
 }
 

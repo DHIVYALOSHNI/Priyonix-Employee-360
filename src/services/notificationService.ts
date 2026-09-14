@@ -16,6 +16,12 @@ import { memoryCache, FIVE_MINUTES_MS } from './cacheUtils';
 
 const CACHE_KEY_NOTIFS_PREFIX = 'user_notifications_';
 
+export const getCachedUserNotifications = (userUid: string): NotificationItem[] => {
+  const cached = memoryCache.peek<NotificationItem[]>(`${CACHE_KEY_NOTIFS_PREFIX}${userUid}`);
+  if (cached && cached.length > 0) return cached;
+  return NOTIFICATIONS_DATA;
+};
+
 export const sendNotification = async (notification: Omit<NotificationItem, 'id' | 'createdAt' | 'isRead'>): Promise<string | null> => {
   try {
     const payload = {
@@ -37,36 +43,28 @@ export const sendNotification = async (notification: Omit<NotificationItem, 'id'
 export const fetchUserNotifications = async (userUid: string, forceRefresh = false): Promise<NotificationItem[]> => {
   const cacheKey = `${CACHE_KEY_NOTIFS_PREFIX}${userUid}`;
 
-  if (!forceRefresh) {
-    const cached = memoryCache.get<NotificationItem[]>(cacheKey);
-    if (cached) {
-      return cached;
-    }
-  }
-
-  let items: NotificationItem[] = [];
-
-  try {
-    const notifsRef = collection(db, 'notifications');
-    // Look for notifications intended for this user or global notifications
-    const q = query(
-      notifsRef, 
-      where('recipientUid', 'in', [userUid, 'ALL_EMPLOYEES', 'ALL_USERS', 'employee-uid-demo', 'admin-uid-demo']),
-      orderBy('createdAt', 'desc')
-    );
-    const snapshot = await getDocs(q);
-    if (!snapshot.empty) {
-      items = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as NotificationItem));
-    } else {
+  return memoryCache.getOrFetch(cacheKey, async () => {
+    let items: NotificationItem[] = [];
+    try {
+      const notifsRef = collection(db, 'notifications');
+      // Look for notifications intended for this user or global notifications
+      const q = query(
+        notifsRef, 
+        where('recipientUid', 'in', [userUid, 'ALL_EMPLOYEES', 'ALL_USERS', 'employee-uid-demo', 'admin-uid-demo']),
+        orderBy('createdAt', 'desc')
+      );
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        items = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as NotificationItem));
+      } else {
+        items = [...NOTIFICATIONS_DATA];
+      }
+    } catch (err) {
+      console.warn('Error fetching notifications from Firestore:', err);
       items = [...NOTIFICATIONS_DATA];
     }
-  } catch (err) {
-    console.warn('Error fetching notifications from Firestore:', err);
-    items = [...NOTIFICATIONS_DATA];
-  }
-
-  memoryCache.set(cacheKey, items, FIVE_MINUTES_MS);
-  return items;
+    return items;
+  }, FIVE_MINUTES_MS, forceRefresh);
 };
 
 export const markNotificationRead = async (id: string, userUid?: string): Promise<void> => {

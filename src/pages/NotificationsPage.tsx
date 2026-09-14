@@ -15,20 +15,26 @@ import { useAuth } from '../contexts/AuthContext';
 import { 
   fetchUserNotifications, 
   markNotificationAsRead, 
-  markAllNotificationsAsRead 
+  markAllNotificationsAsRead,
+  getCachedUserNotifications 
 } from '../services/notificationService';
 import { NotificationItem } from '../types';
 
 export const NotificationsPage: React.FC = () => {
   const { userProfile } = useAuth();
   const navigate = useNavigate();
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
+    return userProfile?.uid ? getCachedUserNotifications(userProfile.uid) : [];
+  });
+  const [loading, setLoading] = useState(() => {
+    const cached = userProfile?.uid ? getCachedUserNotifications(userProfile.uid) : [];
+    return cached.length === 0;
+  });
   const [filter, setFilter] = useState<'ALL' | 'UNREAD'>('ALL');
 
-  const loadNotifications = async () => {
+  const loadNotifications = async (silent = false) => {
     if (!userProfile?.uid) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const data = await fetchUserNotifications(userProfile.uid);
       setNotifications(data);
@@ -40,7 +46,16 @@ export const NotificationsPage: React.FC = () => {
   };
 
   useEffect(() => {
-    loadNotifications();
+    if (userProfile?.uid) {
+      const cached = getCachedUserNotifications(userProfile.uid);
+      if (cached && cached.length > 0) {
+        setNotifications(cached);
+        setLoading(false);
+        loadNotifications(true);
+      } else {
+        loadNotifications(false);
+      }
+    }
   }, [userProfile?.uid]);
 
   const handleMarkAsRead = async (id: string) => {
@@ -69,16 +84,16 @@ export const NotificationsPage: React.FC = () => {
   return (
     <div className="space-y-8">
       {/* 1. HEADER */}
-      <section className="border-b border-[#DDD7CA] pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <section className="border-b border-[#E7E3D8] pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <span className="text-xs font-bold tracking-widest text-[#789B8B] uppercase flex items-center space-x-1.5">
+          <span className="text-xs font-bold tracking-widest text-[#047857] uppercase flex items-center space-x-1.5">
             <Bell size={14} />
             <span>Workspace Activity Alerts</span>
           </span>
-          <h1 className="text-2xl md:text-4xl font-normal text-[#174A4A] font-display mt-1 tracking-tight">
+          <h1 className="text-2xl md:text-4xl font-normal text-[#0B2E2E] font-display mt-1 tracking-tight">
             Notifications
           </h1>
-          <p className="text-xs md:text-sm text-[#73716B] mt-1 font-normal max-w-xl">
+          <p className="text-xs md:text-sm text-[#656966] mt-1 font-normal max-w-xl">
             Real-time updates regarding leave requests, announcements, recognition awards, and system notices.
           </p>
         </div>
@@ -87,7 +102,7 @@ export const NotificationsPage: React.FC = () => {
           {unreadCount > 0 && (
             <button
               onClick={handleMarkAllAsRead}
-              className="px-3.5 py-2 text-xs font-bold rounded-xl bg-[#EFEAE0] border border-[#DDD7CA] hover:border-[#174A4A] text-[#174A4A] transition-colors flex items-center space-x-1.5 cursor-pointer"
+              className="px-3.5 py-2 text-xs font-bold rounded-xl bg-white border border-[#E7E3D8] hover:border-[#047857] text-[#047857] transition-colors flex items-center space-x-1.5 cursor-pointer shadow-xs"
             >
               <CheckCheck size={15} />
               <span>Mark all as read</span>
@@ -102,8 +117,8 @@ export const NotificationsPage: React.FC = () => {
           onClick={() => setFilter('ALL')}
           className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
             filter === 'ALL' 
-              ? 'bg-[#174A4A] text-[#F7F4ED]' 
-              : 'bg-[#EFEAE0] text-[#73716B] hover:text-[#30302D]'
+              ? 'bg-[#047857] text-white shadow-xs' 
+              : 'bg-white border border-[#E7E3D8] text-[#656966] hover:text-[#222525]'
           }`}
         >
           All Notifications ({notifications.length})
@@ -112,8 +127,8 @@ export const NotificationsPage: React.FC = () => {
           onClick={() => setFilter('UNREAD')}
           className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
             filter === 'UNREAD' 
-              ? 'bg-[#174A4A] text-[#F7F4ED]' 
-              : 'bg-[#EFEAE0] text-[#73716B] hover:text-[#30302D]'
+              ? 'bg-[#047857] text-white shadow-xs' 
+              : 'bg-white border border-[#E7E3D8] text-[#656966] hover:text-[#222525]'
           }`}
         >
           Unread ({unreadCount})
@@ -121,23 +136,23 @@ export const NotificationsPage: React.FC = () => {
       </div>
 
       {/* 3. NOTIFICATIONS LIST */}
-      <section className="bg-[#EFEAE0] border border-[#DDD7CA] rounded-3xl p-6 space-y-3">
+      <section className="bg-white border border-[#E7E3D8] rounded-3xl p-6 space-y-3 shadow-xs">
         {loading ? (
           <div className="space-y-3">
             {[1, 2, 3, 4].map(i => (
-              <div key={i} className="p-4 rounded-2xl bg-[#F7F4ED] border border-[#DDD7CA] animate-pulse flex items-start space-x-3.5">
-                <div className="w-8 h-8 rounded-xl bg-[#DDD7CA] shrink-0" />
+              <div key={i} className="p-4 rounded-2xl bg-[#F8F6F1] border border-[#E7E3D8] animate-pulse flex items-start space-x-3.5">
+                <div className="w-8 h-8 rounded-xl bg-[#E7E3D8] shrink-0" />
                 <div className="flex-1 space-y-2">
-                  <div className="w-40 h-3.5 bg-[#DDD7CA] rounded" />
-                  <div className="w-3/4 h-3 bg-[#DDD7CA]/70 rounded" />
+                  <div className="w-40 h-3.5 bg-[#E7E3D8] rounded" />
+                  <div className="w-3/4 h-3 bg-[#E7E3D8]/70 rounded" />
                 </div>
               </div>
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="p-12 text-center text-[#73716B]">
-            <CheckCircle2 size={32} className="mx-auto text-[#4F8068] mb-2" />
-            <h3 className="text-sm font-bold text-[#174A4A]">You're all caught up!</h3>
+          <div className="p-12 text-center text-[#656966]">
+            <CheckCircle2 size={32} className="mx-auto text-[#047857] mb-2" />
+            <h3 className="text-sm font-bold text-[#0B2E2E]">You're all caught up!</h3>
             <p className="text-xs mt-1">No unread notifications at this time.</p>
           </div>
         ) : (
@@ -148,26 +163,26 @@ export const NotificationsPage: React.FC = () => {
                 key={notif.id}
                 className={`p-4 rounded-2xl border transition-all flex items-start space-x-3.5 ${
                   notif.isRead 
-                    ? 'bg-[#F7F4ED]/70 border-[#DDD7CA]' 
-                    : 'bg-[#F7F4ED] border-[#789B8B] shadow-xs'
+                    ? 'bg-[#F8F6F1]/60 border-[#E7E3D8]' 
+                    : 'bg-white border-[#047857] border-l-4 shadow-xs'
                 }`}
               >
                 <div className={`p-2 rounded-xl shrink-0 mt-0.5 ${
-                  notif.isRead ? 'bg-[#DDD7CA]/50 text-[#73716B]' : 'bg-[#174A4A] text-[#F7F4ED]'
+                  notif.isRead ? 'bg-[#E7E3D8] text-[#656966]' : 'bg-[#047857] text-white'
                 }`}>
                   <Icon size={16} />
                 </div>
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <h4 className={`text-xs ${notif.isRead ? 'font-semibold text-[#30302D]' : 'font-bold text-[#174A4A]'}`}>
+                    <h4 className={`text-xs ${notif.isRead ? 'font-semibold text-[#222525]' : 'font-bold text-[#0B2E2E]'}`}>
                       {notif.title}
                     </h4>
-                    <span className="text-[10px] text-[#73716B]">
+                    <span className="text-[10px] text-[#656966]">
                       {new Date(notif.createdAt).toLocaleDateString()}
                     </span>
                   </div>
-                  <p className="text-xs text-[#73716B] mt-0.5 leading-relaxed">
+                  <p className="text-xs text-[#656966] mt-0.5 leading-relaxed">
                     {notif.message}
                   </p>
 
@@ -178,7 +193,7 @@ export const NotificationsPage: React.FC = () => {
                           if (!notif.isRead) handleMarkAsRead(notif.id);
                           navigate(notif.link!);
                         }}
-                        className="font-bold text-[#174A4A] hover:underline flex items-center space-x-1"
+                        className="font-bold text-[#047857] hover:underline flex items-center space-x-1 cursor-pointer"
                       >
                         <span>View Details</span>
                         <ExternalLink size={12} />
@@ -187,7 +202,7 @@ export const NotificationsPage: React.FC = () => {
                     {!notif.isRead && (
                       <button
                         onClick={() => handleMarkAsRead(notif.id)}
-                        className="text-[#789B8B] hover:text-[#174A4A] font-semibold"
+                        className="text-[#047857] hover:text-[#065F46] font-semibold cursor-pointer"
                       >
                         Mark as read
                       </button>

@@ -14,56 +14,54 @@ import { memoryCache, FIVE_MINUTES_MS } from './cacheUtils';
 const CACHE_KEY_DEPARTMENTS = 'departments_cache';
 const CACHE_KEY_DOMAINS = 'domains_cache';
 
-export const fetchDepartments = async (forceRefresh = false): Promise<Department[]> => {
-  if (!forceRefresh) {
-    const cached = memoryCache.get<Department[]>(CACHE_KEY_DEPARTMENTS);
-    if (cached) {
-      return cached;
-    }
-  }
+export const getCachedDepartments = (): Department[] => {
+  const cached = memoryCache.peek<Department[]>(CACHE_KEY_DEPARTMENTS);
+  if (cached && cached.length > 0) return cached;
+  return DEPARTMENTS_DATA;
+};
 
-  let list: Department[] = [];
-  try {
-    const colRef = collection(db, 'departments');
-    const snapshot = await getDocs(colRef);
-    if (!snapshot.empty) {
-      list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Department));
-    } else {
+export const getCachedDomains = (): Domain[] => {
+  const cached = memoryCache.peek<Domain[]>(CACHE_KEY_DOMAINS);
+  if (cached && cached.length > 0) return cached;
+  return DOMAINS_DATA;
+};
+
+export const fetchDepartments = async (forceRefresh = false): Promise<Department[]> => {
+  return memoryCache.getOrFetch(CACHE_KEY_DEPARTMENTS, async () => {
+    let list: Department[] = [];
+    try {
+      const colRef = collection(db, 'departments');
+      const snapshot = await getDocs(colRef);
+      if (!snapshot.empty) {
+        list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Department));
+      } else {
+        list = [...DEPARTMENTS_DATA];
+      }
+    } catch (err) {
+      console.warn('Firestore departments read notice, using seed departments:', err);
       list = [...DEPARTMENTS_DATA];
     }
-  } catch (err) {
-    console.warn('Firestore departments read notice, using seed departments:', err);
-    list = [...DEPARTMENTS_DATA];
-  }
-
-  memoryCache.set(CACHE_KEY_DEPARTMENTS, list, FIVE_MINUTES_MS);
-  return list;
+    return list;
+  }, FIVE_MINUTES_MS, forceRefresh);
 };
 
 export const fetchDomains = async (forceRefresh = false): Promise<Domain[]> => {
-  if (!forceRefresh) {
-    const cached = memoryCache.get<Domain[]>(CACHE_KEY_DOMAINS);
-    if (cached) {
-      return cached;
-    }
-  }
-
-  let list: Domain[] = [];
-  try {
-    const colRef = collection(db, 'domains');
-    const snapshot = await getDocs(colRef);
-    if (!snapshot.empty) {
-      list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Domain));
-    } else {
+  return memoryCache.getOrFetch(CACHE_KEY_DOMAINS, async () => {
+    let list: Domain[] = [];
+    try {
+      const colRef = collection(db, 'domains');
+      const snapshot = await getDocs(colRef);
+      if (!snapshot.empty) {
+        list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Domain));
+      } else {
+        list = [...DOMAINS_DATA];
+      }
+    } catch (err) {
+      console.warn('Firestore domains read notice, using seed domains:', err);
       list = [...DOMAINS_DATA];
     }
-  } catch (err) {
-    console.warn('Firestore domains read notice, using seed domains:', err);
-    list = [...DOMAINS_DATA];
-  }
-
-  memoryCache.set(CACHE_KEY_DOMAINS, list, FIVE_MINUTES_MS);
-  return list;
+    return list;
+  }, FIVE_MINUTES_MS, forceRefresh);
 };
 
 export const saveDepartment = async (

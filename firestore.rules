@@ -11,6 +11,11 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN';
     }
 
+    // Test health check collection
+    match /test/{docId} {
+      allow read: if true;
+    }
+
     // Users collection: user can read their own or admin can read all
     match /users/{userId} {
       allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());

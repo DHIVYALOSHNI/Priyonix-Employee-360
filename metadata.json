@@ -1,6 +1,6 @@
 {
-  "name": "Prionix Employee 360",
-  "description": "Secure Employee Management & Company Operations Platform providing workforce analytics, employee 360 profiles, attendance, leave management, and company operations.",
+  "name": "PRIYONIX Employee 360",
+  "description": "Secure PRIYONIX Employee Management & Enterprise Operations Platform providing workforce analytics, employee 360 profiles, attendance, leave management, and company operations.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

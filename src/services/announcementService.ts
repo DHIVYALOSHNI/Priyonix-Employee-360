@@ -17,37 +17,36 @@ import { memoryCache, FIVE_MINUTES_MS } from './cacheUtils';
 
 const CACHE_KEY_ANNOUNCEMENTS = 'announcements_all_cache';
 
+export const getCachedAnnouncements = (onlyPublished = true): AnnouncementItem[] => {
+  const cached = memoryCache.peek<AnnouncementItem[]>(CACHE_KEY_ANNOUNCEMENTS);
+  const items = (cached && cached.length > 0) ? cached : ANNOUNCEMENTS_DATA;
+  if (onlyPublished) {
+    return items.filter(a => a.status === 'PUBLISHED');
+  }
+  return items;
+};
+
 export const fetchAnnouncements = async (
   onlyPublished = true, 
   forceRefresh = false
 ): Promise<AnnouncementItem[]> => {
-  let allItems: AnnouncementItem[] = [];
-
-  if (!forceRefresh) {
-    const cached = memoryCache.get<AnnouncementItem[]>(CACHE_KEY_ANNOUNCEMENTS);
-    if (cached) {
-      allItems = [...cached];
-    }
-  }
-
-  if (allItems.length === 0) {
+  const allItems = await memoryCache.getOrFetch(CACHE_KEY_ANNOUNCEMENTS, async () => {
+    let list: AnnouncementItem[] = [];
     try {
       const colRef = collection(db, 'announcements');
       const q = query(colRef, orderBy('publishedDate', 'desc'));
       const snapshot = await getDocs(q);
       if (!snapshot.empty) {
-        allItems = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AnnouncementItem));
+        list = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AnnouncementItem));
       } else {
-        allItems = [...ANNOUNCEMENTS_DATA];
+        list = [...ANNOUNCEMENTS_DATA];
       }
     } catch (err) {
       console.warn('Firestore announcements read notice, falling back to seed announcements:', err);
-      allItems = [...ANNOUNCEMENTS_DATA];
+      list = [...ANNOUNCEMENTS_DATA];
     }
-
-    // Cache the full announcement set with 5-minute TTL
-    memoryCache.set(CACHE_KEY_ANNOUNCEMENTS, allItems, FIVE_MINUTES_MS);
-  }
+    return list;
+  }, FIVE_MINUTES_MS, forceRefresh);
 
   if (onlyPublished) {
     return allItems.filter(a => a.status === 'PUBLISHED');

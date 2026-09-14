@@ -17,6 +17,21 @@ import { memoryCache, FIVE_MINUTES_MS } from './cacheUtils';
 const CACHE_KEY_DIRECTORY = 'employee_directory_raw';
 const CACHE_KEY_EMPLOYEE_PREFIX = 'employee_id_';
 
+export const getCachedEmployeeDirectory = (): EmployeeDirectoryItem[] => {
+  const cached = memoryCache.peek<EmployeeDirectoryItem[]>(CACHE_KEY_DIRECTORY);
+  if (cached && cached.length > 0) return cached;
+  return EMPLOYEES_DATA;
+};
+
+export const getCachedEmployeeById = (employeeId: string): EmployeeDirectoryItem | null => {
+  const normId = employeeId.trim().toUpperCase();
+  const cached = memoryCache.peek<EmployeeDirectoryItem>(`${CACHE_KEY_EMPLOYEE_PREFIX}${normId}`);
+  if (cached) return cached;
+  const fromDir = getCachedEmployeeDirectory().find(e => e.employeeId.toUpperCase() === normId);
+  if (fromDir) return fromDir;
+  return EMPLOYEES_DATA.find(e => e.employeeId.toUpperCase() === normId) || null;
+};
+
 export interface EmployeeFilterOptions {
   searchQuery?: string;
   departmentId?: string;

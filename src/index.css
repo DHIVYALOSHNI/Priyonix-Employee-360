@@ -1,23 +1,29 @@
 @import "tailwindcss";
 
 @theme {
-  --color-warm-ivory: #F7F4ED;
-  --color-soft-linen: #EFEAE0;
-  --color-deep-teal: #174A4A;
-  --color-deep-teal-hover: #123B3B;
-  --color-deep-teal-light: #1F5F5F;
-  --color-sage: #789B8B;
-  --color-sage-light: #EBF2EE;
+  --color-warm-ivory: #F8F6F1;
+  --color-soft-linen: #F1ECE1;
+  --color-deep-teal: #0D3535;
+  --color-deep-teal-hover: #082424;
+  --color-deep-teal-light: #144949;
+  --color-emerald-primary: #047857;
+  --color-emerald-accent: #059669;
+  --color-emerald-light: #ECFDF5;
+  --color-emerald-subtle: #D1FAE5;
+  --color-emerald-dark: #064E3B;
+  --color-priyonix-blue: #0A58CA;
+  --color-sage: #059669;
+  --color-sage-light: #ECFDF5;
   --color-muted-coral: #C97867;
   --color-muted-coral-light: #FAF0EE;
   --color-soft-gold: #C5A45D;
   --color-soft-gold-light: #FAF6ED;
-  --color-warm-espresso: #30302D;
-  --color-warm-gray: #73716B;
-  --color-warm-gray-light: #E5E2DA;
-  --color-sand: #DDD7CA;
-  --color-sand-light: #F4F1EA;
-  --color-brand-success: #4F8068;
+  --color-warm-espresso: #222525;
+  --color-warm-gray: #656966;
+  --color-warm-gray-light: #E7E3D8;
+  --color-sand: #DFDACD;
+  --color-sand-light: #F6F4ED;
+  --color-brand-success: #047857;
   --color-brand-warning: #B58A3A;
   --color-brand-error: #B85C50;
 
@@ -37,12 +43,12 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #EFEAE0;
+  background: #F1ECE1;
 }
 ::-webkit-scrollbar-thumb {
-  background: #DDD7CA;
+  background: #DFDACD;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #789B8B;
+  background: #047857;
 }

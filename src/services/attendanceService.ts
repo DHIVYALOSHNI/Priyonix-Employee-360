@@ -119,6 +119,18 @@ export const calculateAttendanceSummary = (records: AttendanceRecord[]): Attenda
   };
 };
 
+export const getCachedAttendance = (
+  employeeId: string, 
+  year = 2026, 
+  month = 9
+): AttendanceRecord[] | null => {
+  const cacheKey = `${employeeId}-${year}-${month}`;
+  if (attendanceCache[cacheKey] && attendanceCache[cacheKey].length > 0) {
+    return attendanceCache[cacheKey];
+  }
+  return null;
+};
+
 export const fetchEmployeeAttendance = async (
   employeeId: string, 
   ownerUid: string, 
@@ -167,6 +179,23 @@ export const logDailyAttendance = async (
   const ref = doc(db, 'attendance', id);
   const payload = JSON.parse(JSON.stringify({ ...record, id }));
   await setDoc(ref, payload, { merge: true });
+
+  // Update in-memory cache directly
+  const dateParts = record.date.split('-');
+  if (dateParts.length >= 2) {
+    const year = parseInt(dateParts[0]);
+    const month = parseInt(dateParts[1]);
+    const cacheKey = `${record.employeeId}-${year}-${month}`;
+    if (attendanceCache[cacheKey]) {
+      const existingIdx = attendanceCache[cacheKey].findIndex(r => r.date === record.date);
+      const updatedRecord: AttendanceRecord = { ...record, id };
+      if (existingIdx >= 0) {
+        attendanceCache[cacheKey][existingIdx] = updatedRecord;
+      } else {
+        attendanceCache[cacheKey].push(updatedRecord);
+      }
+    }
+  }
 };
 
 export const markTodayAttendance = async (

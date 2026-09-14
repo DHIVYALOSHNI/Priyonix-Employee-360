@@ -260,16 +260,16 @@ export const SecurityAuditPage: React.FC = () => {
   return (
     <div className="space-y-8">
       {/* 1. HEADER */}
-      <section className="border-b border-[#DDD7CA] pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <section className="border-b border-[#E7E3D8] pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <span className="text-xs font-bold tracking-widest text-[#789B8B] uppercase flex items-center space-x-1.5">
-            <ShieldCheck size={14} className="text-[#4F8068]" />
+          <span className="text-xs font-bold tracking-widest text-[#047857] uppercase flex items-center space-x-1.5">
+            <ShieldCheck size={14} className="text-[#047857]" />
             <span>Automated Security Test Suite &bull; 9/9 Test Criteria</span>
           </span>
-          <h1 className="text-2xl md:text-4xl font-normal text-[#174A4A] font-display mt-1 tracking-tight">
+          <h1 className="text-2xl md:text-4xl font-normal text-[#0B2E2E] font-display mt-1 tracking-tight">
             Security Verification Suite
           </h1>
-          <p className="text-xs md:text-sm text-[#73716B] mt-1 font-normal max-w-xl">
+          <p className="text-xs md:text-sm text-[#656966] mt-1 font-normal max-w-xl">
             Live evaluation of backend and database-level security rules enforcing Role-Based Access Control, horizontal privacy isolation, and audit logging.
           </p>
         </div>
@@ -278,7 +278,7 @@ export const SecurityAuditPage: React.FC = () => {
           <button
             onClick={handleRunAllTests}
             disabled={runningAll}
-            className="px-5 py-2.5 text-xs font-bold rounded-xl bg-[#174A4A] hover:bg-[#123B3B] text-[#F7F4ED] transition-colors flex items-center space-x-2 shadow-xs cursor-pointer disabled:opacity-50"
+            className="px-5 py-2.5 text-xs font-bold rounded-xl bg-[#047857] hover:bg-[#065F46] text-white transition-colors flex items-center space-x-2 shadow-xs cursor-pointer disabled:opacity-50"
           >
             <Play size={14} />
             <span>{runningAll ? 'Executing 9 Tests...' : 'Run All 9 Security Tests'}</span>
@@ -287,24 +287,24 @@ export const SecurityAuditPage: React.FC = () => {
       </section>
 
       {/* 2. SECURITY STATUS BANNER */}
-      <section className="p-6 rounded-3xl bg-[#EFEAE0] border border-[#DDD7CA] flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+      <section className="p-6 rounded-3xl bg-white border border-[#E7E3D8] flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
         <div className="flex items-center space-x-4">
-          <div className="w-12 h-12 rounded-2xl bg-[#4F8068] text-[#F7F4ED] flex items-center justify-center font-bold text-xl shadow-xs">
+          <div className="w-12 h-12 rounded-2xl bg-[#047857] text-white flex items-center justify-center font-bold text-xl shadow-xs">
             {passedCount}
           </div>
           <div>
-            <h3 className="text-base font-bold text-[#174A4A] font-display">
+            <h3 className="text-base font-bold text-[#0B2E2E] font-display">
               Security Compliance: {passedCount} / {testCases.length} Tests Passed
             </h3>
-            <p className="text-xs text-[#73716B] mt-0.5">
+            <p className="text-xs text-[#656966] mt-0.5">
               Verified against live Cloud Firestore security rules and backend error matrix.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center space-x-2 text-xs font-semibold text-[#73716B]">
+        <div className="flex items-center space-x-2 text-xs font-semibold text-[#656966]">
           <span>Current Active Actor:</span>
-          <span className="font-bold px-2 py-0.5 rounded bg-[#174A4A] text-[#F7F4ED] text-[10px]">
+          <span className="font-bold px-2 py-0.5 rounded bg-[#047857] text-white text-[10px] shadow-xs">
             {role} ({userProfile?.employeeId})
           </span>
         </div>
@@ -315,35 +315,35 @@ export const SecurityAuditPage: React.FC = () => {
         {testCases.map((tc) => (
           <div
             key={tc.id}
-            className={`p-5 rounded-2xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 ${
-              tc.status === 'PASSED' ? 'bg-[#EBF2EE] border-[#789B8B]/60' :
-              tc.status === 'FAILED' ? 'bg-[#FAF0EE] border-[#C97867]' :
-              tc.status === 'RUNNING' ? 'bg-[#FAF6ED] border-[#C5A45D]' :
-              'bg-[#EFEAE0] border-[#DDD7CA]'
+            className={`p-5 rounded-2xl border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs ${
+              tc.status === 'PASSED' ? 'bg-[#ECFDF5] border-[#A7F3D0]' :
+              tc.status === 'FAILED' ? 'bg-[#FEF2F2] border-[#FECACA]' :
+              tc.status === 'RUNNING' ? 'bg-[#FFFBEB] border-[#FDE68A]' :
+              'bg-white border-[#E7E3D8]'
             }`}
           >
             <div className="space-y-1 max-w-2xl">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-bold text-sm text-[#174A4A] font-display">
+                <span className="font-bold text-sm text-[#0B2E2E] font-display">
                   {tc.title}
                 </span>
-                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#F7F4ED] text-[#73716B] border border-[#DDD7CA]">
+                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#F8F6F1] text-[#656966] border border-[#E7E3D8]">
                   Actor: {tc.actorRole}
                 </span>
-                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#174A4A]/10 text-[#174A4A]">
+                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[#ECFDF5] text-[#047857] border border-[#A7F3D0]">
                   Expected: {tc.expectedOutcome}
                 </span>
               </div>
 
-              <p className="text-xs text-[#73716B]">
+              <p className="text-xs text-[#656966]">
                 {tc.description}
               </p>
 
               {tc.actualResult && (
                 <div className="pt-2 text-xs font-semibold flex items-center space-x-2">
-                  <span className="text-[#30302D]">Actual Response:</span>
+                  <span className="text-[#222525]">Actual Response:</span>
                   <span className={`font-mono font-bold ${
-                    tc.status === 'PASSED' ? 'text-[#4F8068]' : 'text-[#B85C50]'
+                    tc.status === 'PASSED' ? 'text-[#047857]' : 'text-[#DC2626]'
                   }`}>
                     {tc.actualResult}
                   </span>
@@ -351,7 +351,7 @@ export const SecurityAuditPage: React.FC = () => {
               )}
 
               {tc.details && (
-                <p className="text-[11px] text-[#73716B] italic pt-0.5">
+                <p className="text-[11px] text-[#656966] italic pt-0.5">
                   &rarr; {tc.details}
                 </p>
               )}
@@ -359,19 +359,19 @@ export const SecurityAuditPage: React.FC = () => {
 
             <div className="flex items-center space-x-3 shrink-0">
               {tc.status === 'PASSED' && (
-                <div className="flex items-center space-x-1.5 text-xs font-bold text-[#4F8068] bg-[#4F8068]/15 px-3 py-1.5 rounded-xl">
+                <div className="flex items-center space-x-1.5 text-xs font-bold text-[#047857] bg-[#ECFDF5] px-3 py-1.5 rounded-xl border border-[#A7F3D0]">
                   <CheckCircle2 size={16} />
                   <span>Verified Safe</span>
                 </div>
               )}
               {tc.status === 'FAILED' && (
-                <div className="flex items-center space-x-1.5 text-xs font-bold text-[#B85C50] bg-[#FAF0EE] px-3 py-1.5 rounded-xl border border-[#C97867]/40">
+                <div className="flex items-center space-x-1.5 text-xs font-bold text-[#DC2626] bg-[#FEF2F2] px-3 py-1.5 rounded-xl border border-[#FECACA]">
                   <XCircle size={16} />
                   <span>Failed</span>
                 </div>
               )}
               {tc.status === 'RUNNING' && (
-                <div className="flex items-center space-x-1.5 text-xs font-bold text-[#B58A3A] bg-[#FAF6ED] px-3 py-1.5 rounded-xl">
+                <div className="flex items-center space-x-1.5 text-xs font-bold text-[#D97706] bg-[#FFFBEB] px-3 py-1.5 rounded-xl border border-[#FDE68A]">
                   <RefreshCw size={14} className="animate-spin" />
                   <span>Evaluating...</span>
                 </div>
@@ -380,7 +380,7 @@ export const SecurityAuditPage: React.FC = () => {
               <button
                 onClick={() => runIndividualTest(tc.id)}
                 disabled={runningAll || tc.status === 'RUNNING'}
-                className="px-3 py-1.5 text-xs font-bold rounded-xl bg-[#F7F4ED] border border-[#DDD7CA] hover:border-[#174A4A] text-[#174A4A] transition-colors cursor-pointer disabled:opacity-50"
+                className="px-3 py-1.5 text-xs font-bold rounded-xl bg-[#F8F6F1] border border-[#E7E3D8] hover:border-[#047857] hover:bg-white text-[#047857] transition-colors cursor-pointer disabled:opacity-50 shadow-xs"
               >
                 Run Test
               </button>

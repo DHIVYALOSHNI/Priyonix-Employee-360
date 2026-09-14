@@ -13,6 +13,10 @@ import { LeaveRecord, LeaveStatus } from '../types';
 import { DEMO_LEAVES_DATA } from './seedData';
 import { sendNotification } from './notificationService';
 import { logActivity } from './activityService';
+import { memoryCache, FIVE_MINUTES_MS } from './cacheUtils';
+
+const CACHE_KEY_LEAVES_ALL = 'leaves_cache_all';
+const CACHE_KEY_LEAVES_EMP_PREFIX = 'leaves_cache_emp_';
 
 export interface LeaveAllowanceSummary {
   totalAllowance: number; // e.g. 24 days annual
@@ -49,27 +53,42 @@ export const calculateLeaveSummary = (leaves: LeaveRecord[], totalAllowance = 24
   };
 };
 
-export const fetchLeaves = async (employeeId?: string, ownerUid?: string): Promise<LeaveRecord[]> => {
-  try {
-    const colRef = collection(db, 'leaves');
-    let q = query(colRef, orderBy('appliedAt', 'desc'));
-
-    if (employeeId && ownerUid) {
-      q = query(colRef, where('employeeId', '==', employeeId), orderBy('appliedAt', 'desc'));
-    }
-
-    const snapshot = await getDocs(q);
-    if (!snapshot.empty) {
-      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as LeaveRecord));
-    }
-  } catch (err) {
-    console.warn('Firestore leaves query warning, falling back to demo records:', err);
-  }
-
+export const getCachedLeaves = (employeeId?: string): LeaveRecord[] | null => {
   if (employeeId) {
+    const cachedEmp = memoryCache.peek<LeaveRecord[]>(`${CACHE_KEY_LEAVES_EMP_PREFIX}${employeeId}`);
+    if (cachedEmp) return cachedEmp;
+    const all = memoryCache.peek<LeaveRecord[]>(CACHE_KEY_LEAVES_ALL);
+    if (all) return all.filter(l => l.employeeId === employeeId);
     return DEMO_LEAVES_DATA.filter(l => l.employeeId === employeeId);
   }
-  return [...DEMO_LEAVES_DATA];
+  return memoryCache.peek<LeaveRecord[]>(CACHE_KEY_LEAVES_ALL) || DEMO_LEAVES_DATA;
+};
+
+export const fetchLeaves = async (employeeId?: string, ownerUid?: string, forceRefresh = false): Promise<LeaveRecord[]> => {
+  const cacheKey = employeeId ? `${CACHE_KEY_LEAVES_EMP_PREFIX}${employeeId}` : CACHE_KEY_LEAVES_ALL;
+
+  return memoryCache.getOrFetch(cacheKey, async () => {
+    try {
+      const colRef = collection(db, 'leaves');
+      let q = query(colRef, orderBy('appliedAt', 'desc'));
+
+      if (employeeId && ownerUid) {
+        q = query(colRef, where('employeeId', '==', employeeId), orderBy('appliedAt', 'desc'));
+      }
+
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as LeaveRecord));
+      }
+    } catch (err) {
+      console.warn('Firestore leaves query warning, falling back to demo records:', err);
+    }
+
+    if (employeeId) {
+      return DEMO_LEAVES_DATA.filter(l => l.employeeId === employeeId);
+    }
+    return [...DEMO_LEAVES_DATA];
+  }, FIVE_MINUTES_MS, forceRefresh);
 };
 
 export const submitLeaveRequest = async (
@@ -85,6 +104,10 @@ export const submitLeaveRequest = async (
 
   const cleaned = JSON.parse(JSON.stringify(newLeave));
   const docRef = await addDoc(collection(db, 'leaves'), cleaned);
+
+  // Invalidate leaves cache
+  memoryCache.invalidate(CACHE_KEY_LEAVES_ALL);
+  memoryCache.invalidatePrefix(CACHE_KEY_LEAVES_EMP_PREFIX);
 
   await logActivity(
     'LEAVE_SUBMITTED',
@@ -129,6 +152,10 @@ export const updateLeaveStatus = async (
   } catch (err) {
     console.warn('Could not update leave status in Firestore:', err);
   }
+
+  // Invalidate leaves cache
+  memoryCache.invalidate(CACHE_KEY_LEAVES_ALL);
+  memoryCache.invalidatePrefix(CACHE_KEY_LEAVES_EMP_PREFIX);
 
   // Create employee notification
   await sendNotification({

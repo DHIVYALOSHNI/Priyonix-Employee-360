@@ -7,6 +7,9 @@ import { db } from '../lib/firebase';
 import { MedicalRecord } from '../types';
 import { DEMO_MEDICAL_DATA } from './seedData';
 import { logActivity } from './activityService';
+import { memoryCache, FIVE_MINUTES_MS } from './cacheUtils';
+
+const CACHE_KEY_MEDICAL_PREFIX = 'medical_cache_';
 
 export class MedicalAccessDeniedError extends Error {
   statusCode: number;
@@ -17,11 +20,18 @@ export class MedicalAccessDeniedError extends Error {
   }
 }
 
+export const getCachedMedicalRecord = (targetEmployeeId: string): MedicalRecord | null => {
+  const cached = memoryCache.peek<MedicalRecord>(`${CACHE_KEY_MEDICAL_PREFIX}${targetEmployeeId.toUpperCase()}`);
+  if (cached) return cached;
+  return DEMO_MEDICAL_DATA[targetEmployeeId.toUpperCase()] || null;
+};
+
 export const fetchMedicalRecord = async (
   targetEmployeeId: string,
   requestingUserUid: string,
   requestingUserRole: 'ADMIN' | 'EMPLOYEE',
-  requestingEmployeeId?: string
+  requestingEmployeeId?: string,
+  forceRefresh = false
 ): Promise<MedicalRecord> => {
   // CRITICAL SECURITY ENFORCEMENT
   if (requestingUserRole !== 'ADMIN') {
@@ -32,38 +42,42 @@ export const fetchMedicalRecord = async (
     }
   }
 
-  try {
-    const ref = doc(db, 'medicalRecords', targetEmployeeId);
-    const snap = await getDoc(ref);
-    if (snap.exists()) {
-      return snap.data() as MedicalRecord;
-    }
-  } catch (err: any) {
-    if (err?.code === 'permission-denied') {
-      throw new MedicalAccessDeniedError('403 Forbidden: Firestore Security Rules blocked unauthorized medical record access.');
-    }
-    console.warn(`Firestore medical record query notice for ${targetEmployeeId}:`, err);
-  }
+  const cacheKey = `${CACHE_KEY_MEDICAL_PREFIX}${targetEmployeeId.toUpperCase()}`;
 
-  const found = DEMO_MEDICAL_DATA[targetEmployeeId.toUpperCase()];
-  if (found) {
-    return found;
-  }
+  return memoryCache.getOrFetch(cacheKey, async () => {
+    try {
+      const ref = doc(db, 'medicalRecords', targetEmployeeId);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        return snap.data() as MedicalRecord;
+      }
+    } catch (err: any) {
+      if (err?.code === 'permission-denied') {
+        throw new MedicalAccessDeniedError('403 Forbidden: Firestore Security Rules blocked unauthorized medical record access.');
+      }
+      console.warn(`Firestore medical record query notice for ${targetEmployeeId}:`, err);
+    }
 
-  // Safe fallback dummy medical file for demo employees
-  return {
-    employeeId: targetEmployeeId,
-    ownerUid: requestingUserUid,
-    bloodGroup: 'O+ (Positive)',
-    emergencyContactName: 'Emergency Contact Person',
-    emergencyContactRelation: 'Family Member',
-    emergencyPhone: '+91 98450 00000',
-    allergies: ['None reported'],
-    medicalNotes: 'Standard corporate medical wellness check cleared.',
-    chronicConditions: [],
-    insurancePolicyNumber: 'PRX-MED-HEALTH-2026',
-    lastUpdated: new Date().toISOString().split('T')[0],
-  };
+    const found = DEMO_MEDICAL_DATA[targetEmployeeId.toUpperCase()];
+    if (found) {
+      return found;
+    }
+
+    // Safe fallback dummy medical file for demo employees
+    return {
+      employeeId: targetEmployeeId,
+      ownerUid: requestingUserUid,
+      bloodGroup: 'O+ (Positive)',
+      emergencyContactName: 'Emergency Contact Person',
+      emergencyContactRelation: 'Family Member',
+      emergencyPhone: '+91 98450 00000',
+      allergies: ['None reported'],
+      medicalNotes: 'Standard corporate medical wellness check cleared.',
+      chronicConditions: [],
+      insurancePolicyNumber: 'PRX-MED-HEALTH-2026',
+      lastUpdated: new Date().toISOString().split('T')[0],
+    };
+  }, FIVE_MINUTES_MS, forceRefresh);
 };
 
 export const updateMedicalRecord = async (
@@ -78,6 +92,9 @@ export const updateMedicalRecord = async (
     lastUpdated: new Date().toISOString().split('T')[0],
   }));
   await setDoc(ref, payload, { merge: true });
+
+  // Invalidate cached medical record
+  memoryCache.invalidate(`${CACHE_KEY_MEDICAL_PREFIX}${record.employeeId.toUpperCase()}`);
 
   await logActivity(
     'MEDICAL_RECORD_UPDATED',
