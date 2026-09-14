@@ -1,0 +1,126 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN';
+    }
+
+    // Users collection: user can read their own or admin can read all
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // Safe Employee directory (public to authenticated users, admin can write)
+    match /employees/{employeeId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Departments & Domains
+    match /departments/{departmentId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    match /domains/{domainId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Attendance records (employee can read own, admin can read/manage all)
+    match /attendance/{recordId} {
+      allow read: if isAuthenticated() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && (request.resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow update, delete: if isAdmin();
+    }
+
+    // Leaves records (employee can read own & create, admin can read all & approve/reject)
+    match /leaves/{leaveId} {
+      allow read: if isAuthenticated() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && (request.resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow update, delete: if isAdmin();
+    }
+
+    // Salary History: HIGHLY SENSITIVE. Only the owner employee or admin can read. Only admin can write.
+    match /salaryHistory/{recordId} {
+      allow read: if isAuthenticated() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    // Medical & Emergency Records: HIGHLY SENSITIVE. Only the owner employee or admin can read.
+    match /medicalRecords/{docId} {
+      allow read: if isAuthenticated() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && (request.resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow update: if isAuthenticated() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // Projects
+    match /projects/{projectId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Project Members
+    match /projectMembers/{memberId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Recognition
+    match /recognition/{recognitionId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Announcements
+    match /announcements/{announcementId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Notifications: Recipient can read and mark read; authenticated system can create
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && (resource.data.recipientUid == request.auth.uid || isAdmin());
+      allow update: if isAuthenticated() && (resource.data.recipientUid == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated();
+      allow delete: if isAuthenticated() && (resource.data.recipientUid == request.auth.uid || isAdmin());
+    }
+
+    // Marketplace Products: readable by all authenticated users, writable by admins
+    match /marketplaceProducts/{productId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Marketplace Orders: readable by buyer employee or admin, creatable by buyer
+    match /orders/{orderId} {
+      allow read: if isAuthenticated() && (resource.data.employeeId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+
+    // Appointment Slots: readable by all authenticated users, bookable/cancellable
+    match /appointmentSlots/{slotId} {
+      allow read: if isAuthenticated();
+      allow create, delete: if isAdmin();
+      allow update: if isAuthenticated();
+    }
+
+    // Activity / Audit Logs: Admin-only read, authenticated can append, immutable
+    match /activityLogs/{activityId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if false;
+    }
+  }
+}
